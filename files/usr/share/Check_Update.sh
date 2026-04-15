@@ -3,11 +3,17 @@
 # 功能：自动识别插件路径、全架构自适应、无感还原数据
 
 # ================= 配置区域 =================
-GITHUB_REPO="qsyjc/immortalwrt-xgp-auto-build"
+# 1. GitHub 仓库路径 (格式: 用户名/项目名)
+GITHUB_REPO="qsyrw/immoralwrt-x86-64"
+
+# 2. 本地版本文件路径 (用于比对当前版本)
 VERSION_FILE="/etc/lenyu_version"
+
+# 3. 固件文件名前缀 (例如: immortalWrt 或 openwrt)
 FILE_PREFIX="immortalWrt"
+
+# 4. 项目显示名称
 PROJECT_NAME="zzXGP"
-# ============================================
 
 # --- [新功能] 自动识别插件并添加备份路径 ---
 auto_append_sysupgrade_conf() {
