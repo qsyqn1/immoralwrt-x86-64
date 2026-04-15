@@ -31,3 +31,4 @@ git clone --depth=1 https://github.com/EasyTier/luci-app-easytier.git package/lu
 git clone --depth=1 https://github.com/rufengsuixing/luci-app-adguardhome.git package/luci-app-adguardhome
 git clone --depth=1 https://github.com/timsaya/luci-app-bandix.git package/luci-app-bandix
 git clone --depth=1 https://github.com/timsaya/openwrt-bandix.git package/openwrt-bandix
+git clone --depth=1 https://github.com/Tokisaki-Galaxy/luci-app-tailscale-community.git package/luci-app-tailscale-community
