@@ -47,9 +47,9 @@ jobs:
       uses: easimon/maximize-build-space@master
       with:
         # 预留 35GB 给系统根目录，防止 Runner 崩溃
-        root-reserve-mb: 35840
+        root-reserve-mb: 51200
         # 预留 2GB 给临时目录
-        temp-reserve-mb: 2048
+        temp-reserve-mb: 4096
         # 1GB Swap 足够了
         swap-size-mb: 1024
         remove-dotnet: 'true'
