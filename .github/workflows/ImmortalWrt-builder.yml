@@ -28,12 +28,12 @@ jobs:
     runs-on: ubuntu-24.04
 
     steps:
-    - name: Check build space
+    - name: 检查系统空间
       run: |
         df -h
         lsblk
         free -h
-    - name: Check if /mnt is mounted
+    - name: 检查 /mnt 是否已挂载
       id: check-mnt
       run: |
           if mountpoint -q /mnt; then
@@ -43,7 +43,20 @@ jobs:
             echo "mnt_exists=false" >> $GITHUB_OUTPUT
             echo "/mnt is not mounted, skipping maximize-build-space"
           fi
-    - name: Maximize build space
+
+    - name: 可用磁盘空间
+      uses: jlumbroso/free-disk-space@main
+      with:
+        # 这里的参数可以根据需要调整，以下通常能清理出最大空间
+        tool-cache: true
+        android: true
+        dotnet: true
+        haskell: true
+        large-packages: true
+        docker-images: true
+        swap-storage: true
+        
+    - name: 系统空间最大化
       if: steps.check-mnt.outputs.mnt_exists == 'true'
       uses: easimon/maximize-build-space@master
       with:
@@ -52,12 +65,12 @@ jobs:
         remove-dotnet: 'true'
         remove-android: 'true'
         remove-haskell: 'true'
-    - name: Check build space after maximize-build-space
+    - name: 最大化构建空间后检查构建空间
       run: |
           df -h
           lsblk
           free -h
-    - name: Checkout code
+    - name: 结账代码
       uses: actions/checkout@v4
 
     - name: 初始化环境
