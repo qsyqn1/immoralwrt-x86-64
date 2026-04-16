@@ -46,8 +46,14 @@ jobs:
     - name: 系统空间最大化
       uses: easimon/maximize-build-space@master
       with:
-        root-reserve-mb: 2048
-        swap-size-mb: 1
+        # root-reserve-mb 原来是 2048 (2GB)，显然不够
+        # 强烈建议改为 5120 (5GB) 或 10240 (10GB)
+        root-reserve-mb: 5120 
+
+        # swap 设置为 1 会导致只有 4MB swap，编译 X86 时可能会内存溢出
+        # 建议给 512MB 或 1024MB 备用
+        swap-size-mb: 1024
+
         remove-dotnet: 'true'
         remove-android: 'true'
         remove-haskell: 'true'
