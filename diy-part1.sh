@@ -34,6 +34,8 @@ git clone --depth=1 https://github.com/timsaya/openwrt-bandix.git package/openwr
 git clone --depth=1 https://github.com/Tokisaki-Galaxy/luci-app-tailscale-community.git package/luci-app-tailscale-community
 git clone -b dev https://github.com/Blueplanet20120/luci-app-romupdate.git
 
+mkdir -p files/usr/share
+
 cat>files/usr/share/Check_Update.sh<<-\EOF
 #!/bin/bash
 # zzXGP & 多项目通用自适应无感升级脚本
