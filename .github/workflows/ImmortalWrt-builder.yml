@@ -43,7 +43,6 @@ jobs:
             echo "mnt_exists=false" >> $GITHUB_OUTPUT
             echo "/mnt is not mounted, skipping maximize-build-space"
           fi
-
     - name: 可用磁盘空间
       uses: jlumbroso/free-disk-space@main
       with:
@@ -55,7 +54,6 @@ jobs:
         large-packages: true
         docker-images: true
         swap-storage: true
-        
     - name: 系统空间最大化
       if: steps.check-mnt.outputs.mnt_exists == 'true'
       uses: easimon/maximize-build-space@master
