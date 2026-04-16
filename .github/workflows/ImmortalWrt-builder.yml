@@ -43,20 +43,22 @@ jobs:
             echo "mnt_exists=false" >> $GITHUB_OUTPUT
             echo "/mnt is not mounted, skipping maximize-build-space"
           fi
-    - name: 系统空间最大化
-      uses: easimon/maximize-build-space@master
-      with:
-        # 预留 35GB 给系统根目录，防止 Runner 崩溃
-        root-reserve-mb: 97280
-        # 预留 2GB 给临时目录
-        temp-reserve-mb: 9126
-        # 1GB Swap 足够了
-        swap-size-mb: 8196
-        remove-dotnet: 'true'
-        remove-android: 'true'
-        remove-haskell: 'true'
-        remove-codeql: 'true'
-        remove-docker-images: 'true'
+    - name: 空间清理与优化 (物理腾挪)
+      run: |
+        # 1. 彻底删除昂贵且无用的预装软件
+        sudo rm -rf /usr/share/dotnet
+        sudo rm -rf /usr/local/lib/android
+        sudo rm -rf /opt/ghc
+        sudo rm -rf /opt/hostedtoolcache/CodeQL
+        # 2. 清理 Docker 镜像（如果你不需要 Docker 编译的话）
+        sudo docker image prune -a -f
+        # 3. 清理系统软件包缓存
+        sudo apt-get clean
+        # 4. 强制删除一些大型包（如果还不够）
+        # sudo apt-get purge -y firefox google-chrome-stable microsoft-edge-stable mono-devel
+        # 5. 查看清理后的战果
+        echo "清理后的磁盘状态："
+        df -h
     - name: 最大化构建空间后检查构建空间
       run: |
           df -h
