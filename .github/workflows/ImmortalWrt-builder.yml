@@ -149,12 +149,18 @@ jobs:
         # 只清理宿主工具的缓存，不影响下载的源码
         rm -rf openwrt/build_dir/host/build-gcc
 
-    - name: 编译固件
+    - name: 编译固件 (调试模式)
       id: compile
       run: |
         cd openwrt
         # 强制预编译 host 工具，且使用较低的线程数，避免 OOM
         make -j1 tools/install || make -j1 tools/install V=s
+        
+        # 【临时插入】优先单线程详细编译 MosDNS，精准定位其报错原因
+        echo "=== 开始针对性排查 MosDNS 编译问题 ==="
+        make package/mosdns/mosdns/compile V=s -j1 || echo "MosDNS 编译确实失败了，请在上方查看具体原因！"
+        echo "========================================="
+
         # 编译主体固件
         echo -e "$(nproc) thread compile"
         make -j$(nproc) || make -j1 || make -j1 V=s
