@@ -23,12 +23,12 @@
 rm -rf feeds/luci/applications/luci-app-lucky
 rm -rf feeds/luci/applications/luci-app-easytier
 rm -rf feeds/luci/applications/luci-app-adguardhome
-rm -rf feeds/packages/lang/golang
+# rm -rf feeds/packages/lang/golang
 rm -rf feeds/packages/net/v2ray-geodata
 
 # 2. 克隆插件 (增加 --depth=1 加速编译)
 echo "Cloning custom packages..."
-git clone https://github.com/sbwml/packages_lang_golang -b 26.x feeds/packages/lang/golang
+# git clone https://github.com/sbwml/packages_lang_golang -b 26.x feeds/packages/lang/golang
 git clone https://github.com/sbwml/luci-app-mosdns -b v5 package/mosdns
 git clone https://github.com/sbwml/v2ray-geodata package/v2ray-geodata
 git clone --depth=1 https://github.com/gdy666/luci-app-lucky.git package/lucky
