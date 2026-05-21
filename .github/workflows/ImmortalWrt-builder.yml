@@ -149,25 +149,25 @@ jobs:
         # 只清理宿主工具的缓存，不影响下载的源码
         rm -rf openwrt/build_dir/host/build-gcc
 
-    - name: 编译固件
+    - name: 编译固件 (抓取 MosDNS 报错)
       id: compile
       run: |
         cd openwrt
-        # 1. 强制预编译 host 工具
+        # 预编译 host
         make -j1 tools/install || make -j1 tools/install V=s
-        
-        # 2. 【核心修复】强制先单线程把最底层的 toolchain 编译并安装好，补齐 musl 动态库
-        echo "=== 正在预编译底层工具链与基础库 ==="
+        # 预编译工具链
         make -j1 toolchain/install || make -j1 toolchain/install V=s
-        make -j1 package/libs/toolchain/compile V=s
+        make -j1 package/libs/toolchain/compile
 
-        # 3. 编译主体固件 (此时 MosDNS 也能正常并发编译了)
+        # 【核心调试】此时工具链已完整，单线程编译 MosDNS，让它把错误无处隐藏
+        echo "========================================="
+        echo "=== 正在单线程打印 MosDNS 的核心报错... ==="
+        echo "========================================="
+        make package/mosdns/mosdns/compile V=s -j1
+        
+        # 编译主体固件
         echo -e "$(nproc) thread compile"
         make -j$(nproc) || make -j1 || make -j1 V=s
-        echo "status=success" >> $GITHUB_OUTPUT
-        grep '^CONFIG_TARGET.*DEVICE.*=y' .config | sed -r 's/.*DEVICE_(.*)=y/\1/' > DEVICE_NAME
-        [ -s DEVICE_NAME ] && echo "DEVICE_NAME=_$(cat DEVICE_NAME)" >> $GITHUB_ENV
-        echo "FILE_DATE=_$(date +"%Y%m%d%H%M")" >> $GITHUB_ENV
         
     - name: 检查空间使用情况
       if: (!cancelled())
