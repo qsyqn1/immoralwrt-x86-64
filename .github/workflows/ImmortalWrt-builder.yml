@@ -112,28 +112,19 @@ jobs:
         fi
         ln -sf /workdir/openwrt $GITHUB_WORKSPACE/openwrt
 
-    - name: 替换为高版本 Golang 工具链 (Go 1.26)
-      run: |
-        cd openwrt
-        # 1. 彻底删除原有的旧版本 golang feed 源码
-        rm -rf feeds/packages/lang/golang
+    - name: 更新信息流
+      run: cd openwrt && ./scripts/feeds update -a
         
-        # 2. 克隆高版本 Golang 仓库到对应位置
-        git clone https://github.com/sbwml/packages_lang_golang -b 26.x feeds/packages/lang/golang
-        
+    - name: 安装订阅源
+      run: cd openwrt && ./scripts/feeds install -a
+  
     - name: 加载自定义信息源
       run: |
         [ -e $FEEDS_CONF ] && mv $FEEDS_CONF openwrt/feeds.conf.default
         chmod +x $DIY_P1_SH
         cd openwrt
         $GITHUB_WORKSPACE/$DIY_P1_SH
-
-    - name: 更新信息流
-      run: cd openwrt && ./scripts/feeds update -a
-
-    - name: 安装订阅源
-      run: cd openwrt && ./scripts/feeds install -a
-  
+        
     - name: 加载自定义配置
       run: |
         [ -e files ] && mv files openwrt/files
