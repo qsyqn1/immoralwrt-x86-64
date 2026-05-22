@@ -20,6 +20,8 @@
 #!/bin/bash
 
 # 1. 清理可能存在的重复包 (防止编译冲突)
+rm -rf feeds/packages/lang/golang
+git clone https://github.com/sbwml/packages_lang_golang -b 26.x feeds/packages/lang/golang
 rm -rf feeds/luci/applications/luci-app-lucky
 rm -rf feeds/luci/applications/luci-app-easytier
 rm -rf feeds/luci/applications/luci-app-adguardhome
