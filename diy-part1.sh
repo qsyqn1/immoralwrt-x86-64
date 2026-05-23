@@ -22,6 +22,15 @@
 # 1. 清理可能存在的重复包 (防止编译冲突)
 rm -rf feeds/packages/lang/golang
 git clone https://github.com/sbwml/packages_lang_golang -b 26.x feeds/packages/lang/golang
+# 2. 强力清除 ImmortalWrt 自带的旧版 v2ray-geodata 和 mosdns
+# 使用 feeds 命令卸载可以防止软链接残留
+./scripts/feeds uninstall v2ray-geodata mosdns luci-app-mosdns || true      
+# 彻底物理删除 feeds 目录中可能残存的源码文件夹
+rm -rf feeds/packages/net/v2ray-geodata
+rm -rf feeds/packages/net/mosdns
+rm -rf feeds/luci/applications/luci-app-mosdns
+find ./ | grep Makefile | grep v2ray-geodata | xargs rm -f
+find ./ | grep Makefile | grep mosdns | xargs rm -f
 rm -rf feeds/luci/applications/luci-app-lucky
 rm -rf feeds/luci/applications/luci-app-easytier
 rm -rf feeds/luci/applications/luci-app-adguardhome
