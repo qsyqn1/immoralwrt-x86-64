@@ -48,4 +48,4 @@ git clone --depth=1 https://github.com/timsaya/openwrt-bandix.git package/openwr
 git clone --depth=1 https://github.com/Tokisaki-Galaxy/luci-app-tailscale-community.git package/luci-app-tailscale-community
 git clone --depth=1 https://github.com/qsyqn1/luci-app-onlineupgrade.git package/luci-app-onlineupgrade
 # git clone -b dev https://github.com/Blueplanet20120/luci-app-romupdate.git
-git clone --depth=1 https://github.com/vernesong/OpenClash.git package/OpenClash.
+git clone --depth=1 https://github.com/vernesong/OpenClash.git package/OpenClash
