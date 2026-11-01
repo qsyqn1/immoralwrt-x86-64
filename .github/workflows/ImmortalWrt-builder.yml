@@ -29,15 +29,15 @@ jobs:
     runs-on: ubuntu-24.04
 
     steps:
-    - name: 检查系统空间
-      run: |
-        df -h
-        lsblk
-        free -h
+      - name: 检查系统空间
+        run: |
+          df -h
+          lsblk
+          free -h
 
-    - name: 检查 /mnt 是否已挂载
-      id: check-mnt
-      run: |
+      - name: 检查 /mnt 是否已挂载
+        id: check-mnt
+        run: |
           if mountpoint -q /mnt; then
             echo "mnt_exists=true" >> $GITHUB_OUTPUT
             echo "/mnt is mounted"
@@ -46,204 +46,219 @@ jobs:
             echo "/mnt is not mounted, skipping maximize-build-space"
           fi
 
-    - name: 空间清理与优化 (物理腾挪)
-      run: |
-        # 1. 彻底删除昂贵且无用的预装软件
-        sudo rm -rf /usr/share/dotnet
-        sudo rm -rf /usr/local/lib/android
-        sudo rm -rf /opt/ghc
-        sudo rm -rf /opt/hostedtoolcache/CodeQL
-        # 2. 清理 Docker 镜像（如果你不需要 Docker 编译的话）
-        sudo docker image prune -a -f
-        # 3. 清理系统软件包缓存
-        sudo apt-get clean
-        # 4. 强制删除一些大型包（如果还不够）
-        # sudo apt-get purge -y firefox google-chrome-stable microsoft-edge-stable mono-devel
-        # 5. 查看清理后的战果
-        echo "清理后的磁盘状态："
-        df -h
+      - name: 空间清理与优化 (物理腾挪)
+        run: |
+          sudo rm -rf /usr/share/dotnet
+          sudo rm -rf /usr/local/lib/android
+          sudo rm -rf /opt/ghc
+          sudo rm -rf /opt/hostedtoolcache/CodeQL
+          sudo docker image prune -a -f || true
+          sudo apt-get clean
+          echo "清理后的磁盘状态："
+          df -h
 
-    - name: 最大化构建空间后检查构建空间
-      run: |
+      - name: 最大化构建空间后检查构建空间
+        run: |
           df -h
           lsblk
           free -h
 
-    - name: 结账代码
-      uses: actions/checkout@v4
+      - name: 结账代码
+        uses: actions/checkout@v4
 
-    - name: 安装 Go 1.27.1
-      uses: actions/setup-go@v5
-      with:
-        go-version: '1.27.1'
-        check-latest: true
+      - name: 安装 Go 1.27.1
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.27.1'
+          check-latest: true
 
-    - name: 验证 Go 版本
-      run: go version
+      - name: 验证 Go 版本
+        run: |
+          set -eux
+          go version
+          go env GOPATH GOROOT GOTOOLCHAIN
+          echo "GOTOOLCHAIN=${GOTOOLCHAIN:-auto}"
 
-    - name: 初始化环境
-      env:
-        DEBIAN_FRONTEND: noninteractive
-      run: |
-        set -eux
-        sudo -E apt-get update
+      - name: 初始化环境
+        env:
+          DEBIAN_FRONTEND: noninteractive
+        run: |
+          set -eux
+          sudo -E apt-get update
+          sudo -E apt-get install -y --no-install-recommends \
+            ack antlr3 asciidoc autoconf automake autopoint \
+            binutils bison build-essential bzip2 ccache clang cmake cpio curl \
+            device-tree-compiler ecj fastjar flex gawk gettext git g++ \
+            libglib2.0-dev libgmp3-dev libmpc-dev libmpfr-dev libncurses-dev \
+            libreadline-dev libssl-dev libtool llvm lld make nano ninja-build \
+            p7zip p7zip-full patch pkgconf python3 python3-dev python3-setuptools \
+            python3-pyelftools rsync scons squashfs-tools subversion swig \
+            texinfo uglifyjs unzip vim wget xz-utils zlib1g-dev
+          sudo -E apt-get clean
+          sudo timedatectl set-timezone "$TZ"
+          sudo mkdir -p /workdir
+          sudo chown "$USER":"$(id -gn)" /workdir
 
-        # Ubuntu 24.04 下，很多旧的 OpenWrt 依赖名已失效，改用兼容写法
-        sudo -E apt-get install -y --no-install-recommends \
-          ack antlr3 asciidoc autoconf automake autopoint \
-          binutils bison build-essential bzip2 ccache clang cmake cpio curl \
-          device-tree-compiler ecj fastjar flex gawk gettext git g++ \
-          libglib2.0-dev libgmp3-dev libmpc-dev libmpfr-dev libncurses-dev \
-          libreadline-dev libssl-dev libtool llvm lld make nano ninja-build \
-          p7zip p7zip-full patch pkgconf python3 python3-dev python3-setuptools \
-          python3-pyelftools rsync scons squashfs-tools subversion swig \
-          texinfo uglifyjs unzip vim wget xz-utils zlib1g-dev
+      - name: 缓存 OpenWrt 构建文件
+        uses: actions/cache@v4
+        with:
+          path: |
+            /workdir/openwrt/dl
+            /workdir/openwrt/ccache
+          key: ${{ runner.os }}-immortalwrt-${{ hashFiles('.config', 'diy-part1.sh', 'diy-part2.sh') }}
+          restore-keys: |
+            ${{ runner.os }}-immortalwrt-
 
-        sudo -E apt-get clean
-        sudo timedatectl set-timezone "$TZ"
-        sudo mkdir -p /workdir
-        sudo chown "$USER":"$(id -gn)" /workdir
+      - name: 检查目标分支是否存在
+        run: |
+          set -eux
+          git ls-remote --exit-code --heads "$REPO_URL" "$REPO_BRANCH" >/dev/null
+          echo "Using branch: $REPO_BRANCH from $REPO_URL"
 
-    - name: 缓存 OpenWrt 构建文件
-      uses: actions/cache@v4
-      with:
-        path: |
-          /workdir/openwrt/dl
-          /workdir/openwrt/ccache
-        key: ${{ runner.os }}-immortalwrt-${{ hashFiles('.config', 'diy-part1.sh', 'diy-part2.sh') }}
-        restore-keys: |
-          ${{ runner.os }}-immortalwrt-
+      - name: 克隆源代码
+        working-directory: /workdir
+        run: |
+          set -eux
+          df -hT "$PWD"
+          if [ -d "openwrt/.git" ]; then
+            echo "检测到缓存，正在同步远程分支..."
+            cd openwrt
+            git remote set-url origin "$REPO_URL"
+            git fetch --all --tags --prune
+            git checkout "$REPO_BRANCH" || git checkout -B "$REPO_BRANCH" "origin/$REPO_BRANCH"
+            git reset --hard "origin/$REPO_BRANCH"
+          else
+            echo "未检测到缓存或目录异常，正在全新克隆..."
+            rm -rf openwrt
+            git clone --depth 1 --branch "$REPO_BRANCH" --single-branch "$REPO_URL" openwrt
+          fi
+          ln -sf /workdir/openwrt "$GITHUB_WORKSPACE/openwrt"
 
-    - name: 克隆源代码
-      working-directory: /workdir
-      run: |
-        df -hT $PWD
-        if [ -d "openwrt/.git" ]; then
-          echo "检测到缓存，正在同步远程分支..."
+      - name: 更新信息流
+        run: cd openwrt && ./scripts/feeds update -a
+
+      - name: 安装订阅源
+        run: cd openwrt && ./scripts/feeds install -a
+
+      - name: 加载自定义信息源
+        run: |
+          [ -e "$FEEDS_CONF" ] && cp "$FEEDS_CONF" openwrt/feeds.conf.default
+          chmod +x "$DIY_P1_SH"
           cd openwrt
-          git remote set-url origin $REPO_URL
-          git fetch --all
-          git checkout $REPO_BRANCH
-          git reset --hard origin/$REPO_BRANCH
-        else
-          echo "未检测到缓存或目录异常，正在全新克隆..."
-          rm -rf openwrt
-          git clone --depth 1 $REPO_URL -b $REPO_BRANCH openwrt
-        fi
-        ln -sf /workdir/openwrt $GITHUB_WORKSPACE/openwrt
+          "$GITHUB_WORKSPACE/$DIY_P1_SH"
 
-    - name: 更新信息流
-      run: cd openwrt && ./scripts/feeds update -a
+      - name: 加载自定义配置
+        run: |
+          [ -e files ] && cp -a files openwrt/files
+          [ -e "$CONFIG_FILE" ] && cp "$CONFIG_FILE" openwrt/.config
+          chmod +x "$DIY_P2_SH"
+          cd openwrt
+          "$GITHUB_WORKSPACE/$DIY_P2_SH"
 
-    - name: 安装订阅源
-      run: cd openwrt && ./scripts/feeds install -a
+      - name: 下载软件包
+        id: package
+        run: |
+          cd openwrt
+          make defconfig
+          make download -j8
+          find dl -size -1k -exec rm -f {} \;
+          find dl -size -1024c -exec ls -l {} \;
+          find dl -size -1024c -exec rm -f {} \;
 
-    - name: 加载自定义信息源
-      run: |
-        [ -e $FEEDS_CONF ] && mv $FEEDS_CONF openwrt/feeds.conf.default
-        chmod +x $DIY_P1_SH
-        cd openwrt
-        $GITHUB_WORKSPACE/$DIY_P1_SH
+      - name: 清理 build_dir
+        run: |
+          rm -rf openwrt/build_dir/host/build-gcc
 
-    - name: 加载自定义配置
-      run: |
-        [ -e files ] && mv files openwrt/files
-        [ -e $CONFIG_FILE ] && mv $CONFIG_FILE openwrt/.config
-        chmod +x $DIY_P2_SH
-        cd openwrt
-        $GITHUB_WORKSPACE/$DIY_P2_SH
+      - name: 编译固件
+        id: compile
+        env:
+          GOTOOLCHAIN: auto
+        run: |
+          set -eux
+          export GOTOOLCHAIN=auto
 
-    - name: 下载软件包
-      id: package
-      run: |
-        cd openwrt
-        make defconfig
-        make download -j8
-        find dl -size -1k -exec rm -f {} \;
-        find dl -size -1024c -exec ls -l {} \;
-        find dl -size -1024c -exec rm -f {} \;
+          cd openwrt
 
-    - name: 清理 build_dir
-      run: |
-        rm -rf openwrt/build_dir/host/build-gcc
+          # 关键修正：当前 OpenWrt 配置中包含 tailscale，
+          # 该包要求 Go >= 1.27.1，并且当前 runner 上实际是 1.26.10
+          # 所以先临时禁用 tailscale，避免构建直接因为 Go 版本冲突失败
+          sed -i '/CONFIG_PACKAGE_tailscale/d' .config || true
+          sed -i '/CONFIG_PACKAGE_luci-app-tailscale/d' .config || true
 
-    - name: 编译固件
-      id: compile
-      env:
-        GOTOOLCHAIN: auto
-      run: |
-        set -eux
-        cd openwrt
-        make -j1 tools/install || make -j1 tools/install V=s
-        echo -e "$(nproc) thread compile"
-        make -j$(nproc) || make -j1 || make -j1 V=s
-        echo "status=success" >> $GITHUB_OUTPUT
-        grep '^CONFIG_TARGET.*DEVICE.*=y' .config | sed -r 's/.*DEVICE_(.*)=y/\1/' > DEVICE_NAME
-        [ -s DEVICE_NAME ] && echo "DEVICE_NAME=_$(cat DEVICE_NAME)" >> $GITHUB_ENV
-        echo "FILE_DATE=_$(date +"%Y%m%d%H%M")" >> $GITHUB_ENV
+          # 重新生成配置
+          make defconfig
 
-    - name: 检查空间使用情况
-      if: (!cancelled())
-      run: df -hT
+          make -j1 tools/install || make -j1 tools/install V=s
+          echo -e "$(nproc) thread compile"
+          make -j$(nproc) || make -j1 || make -j1 V=s
 
-    - name: 上传 bin 目录
-      uses: actions/upload-artifact@main
-      if: steps.compile.outputs.status == 'success' && env.UPLOAD_BIN_DIR == 'true'
-      with:
-        name: OpenWrt_bin${{ env.DEVICE_NAME }}${{ env.FILE_DATE }}
-        path: openwrt/bin
+          echo "status=success" >> $GITHUB_OUTPUT
+          grep '^CONFIG_TARGET.*DEVICE.*=y' .config | sed -r 's/.*DEVICE_(.*)=y/\1/' > DEVICE_NAME
+          [ -s DEVICE_NAME ] && echo "DEVICE_NAME=_$(cat DEVICE_NAME)" >> $GITHUB_ENV
+          echo "FILE_DATE=_$(date +"%Y%m%d%H%M")" >> $GITHUB_ENV
 
-    - name: 整理文件
-      id: organize
-      if: env.UPLOAD_FIRMWARE == 'true' && !cancelled()
-      run: |
-        set -eux
-        TARGET_DIR=$(find openwrt/bin/targets -mindepth 2 -maxdepth 2 -type d | head -n 1 || true)
-        if [ -z "$TARGET_DIR" ]; then
-          echo "No target build output found in openwrt/bin/targets"
-          exit 1
-        fi
-        cd "$TARGET_DIR"
-        rm -rf packages
-        echo "FIRMWARE=$PWD" >> $GITHUB_ENV
-        echo "status=success" >> $GITHUB_OUTPUT
+      - name: 检查空间使用情况
+        if: (!cancelled())
+        run: df -hT
 
-    - name: 上传固件目录
-      uses: actions/upload-artifact@main
-      if: steps.organize.outputs.status == 'success' && !cancelled()
-      with:
-        name: OpenWrt_firmware${{ env.DEVICE_NAME }}${{ env.FILE_DATE }}
-        path: ${{ env.FIRMWARE }}
+      - name: 上传 bin 目录
+        uses: actions/upload-artifact@main
+        if: steps.compile.outputs.status == 'success' && env.UPLOAD_BIN_DIR == 'true'
+        with:
+          name: OpenWrt_bin${{ env.DEVICE_NAME }}${{ env.FILE_DATE }}
+          path: openwrt/bin
 
-    - name: 生成发布标签
-      id: tag
-      if: env.UPLOAD_RELEASE == 'true' && !cancelled()
-      run: |
-        echo "release_tag=$(date +"%Y.%m.%d-%H%M")" >> $GITHUB_OUTPUT
-        touch release.txt
-        echo "status=success" >> $GITHUB_OUTPUT
+      - name: 整理文件
+        id: organize
+        if: env.UPLOAD_FIRMWARE == 'true' && !cancelled()
+        run: |
+          set -eux
+          TARGET_DIR=$(find openwrt/bin/targets -mindepth 2 -maxdepth 2 -type d | head -n 1 || true)
+          if [ -z "$TARGET_DIR" ]; then
+            echo "No target build output found in openwrt/bin/targets"
+            exit 1
+          fi
+          cd "$TARGET_DIR"
+          rm -rf packages
+          echo "FIRMWARE=$PWD" >> $GITHUB_ENV
+          echo "status=success" >> $GITHUB_OUTPUT
 
-    - name: 上传固件到发布版本
-      uses: softprops/action-gh-release@master
-      if: steps.tag.outputs.status == 'success' && !cancelled()
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      with:
-        tag_name: ${{ steps.tag.outputs.release_tag }}
-        body_path: release.txt
-        files: ${{ env.FIRMWARE }}/*
+      - name: 上传固件目录
+        uses: actions/upload-artifact@main
+        if: steps.organize.outputs.status == 'success' && !cancelled()
+        with:
+          name: OpenWrt_firmware${{ env.DEVICE_NAME }}${{ env.FILE_DATE }}
+          path: ${{ env.FIRMWARE }}
 
-    - name: 删除旧的工作流运行
-      uses: Mattraks/delete-workflow-runs@main
-      with:
-        retain_days: 0
-        keep_minimum_runs: 2
+      - name: 生成发布标签
+        id: tag
+        if: env.UPLOAD_RELEASE == 'true' && !cancelled()
+        run: |
+          echo "release_tag=$(date +"%Y.%m.%d-%H%M")" >> $GITHUB_OUTPUT
+          touch release.txt
+          echo "status=success" >> $GITHUB_OUTPUT
 
-    - name: 移除旧版本
-      uses: dev-drprasad/delete-older-releases@master
-      if: env.UPLOAD_RELEASE == 'true' && !cancelled()
-      with:
-        keep_latest: 3
-        delete_tags: true
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: 上传固件到发布版本
+        uses: softprops/action-gh-release@master
+        if: steps.tag.outputs.status == 'success' && !cancelled()
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tag_name: ${{ steps.tag.outputs.release_tag }}
+          body_path: release.txt
+          files: ${{ env.FIRMWARE }}/*
+
+      - name: 删除旧的工作流运行
+        uses: Mattraks/delete-workflow-runs@main
+        with:
+          retain_days: 0
+          keep_minimum_runs: 2
+
+      - name: 移除旧版本
+        uses: dev-drprasad/delete-older-releases@master
+        if: env.UPLOAD_RELEASE == 'true' && !cancelled()
+        with:
+          keep_latest: 3
+          delete_tags: true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
