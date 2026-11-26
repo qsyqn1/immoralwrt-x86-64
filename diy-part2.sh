@@ -13,3 +13,10 @@
 
 # 1. 修改默认 IP 为 10.10.0.1
 sed -i 's/192.168.1.1/10.0.0.2/g' package/base-files/files/bin/config_generate
+
+# Rust 1.96.0's CI LLVM artifact can return 404. Build LLVM from source instead
+# of downloading that artifact; this matches the upstream package's workaround.
+RUST_MAKEFILE="feeds/packages/lang/rust/Makefile"
+if [ -f "$RUST_MAKEFILE" ]; then
+  sed -i 's/--set=llvm\.download-ci-llvm=true/--set=llvm.download-ci-llvm=false/' "$RUST_MAKEFILE"
+fi
